@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Drone Pilot Academy - Praktijk & Theorie</title>
+  <!-- Import Three.js via CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      user-select: none;
+    }
+
+    body {
+      background-color: #121824;
+      color: #ffffff;
+      overflow-x: hidden;
+    }
+
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1e293b;
+      padding: 12px 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+
+    .logo {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #38bdf8;
+    }
+
+    .nav-links button {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 8px 16px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-links button.active, .nav-links button:hover {
+      background: #0284c7;
+      color: #fff;
+    }
+
+    .score-badge {
+      background: #059669;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: bold;
+    }
+
+    .tab-content {
+      display: none;
+      padding: 20px;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* 3D SIMULATOR STYLES */
+    #sim-container {
+      position: relative;
+      width: 100%;
+      height: calc(100vh - 80px);
+      background: #000;
+      overflow: hidden;
+    }
+
+    #canvas-holder {
+      width: 100%;
+      height: 100%;
+    }
+
+    #hud {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      background: rgba(15, 23, 42, 0.85);
+      padding: 12px 18px;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      display: flex;
+      gap: 20px;
+      pointer-events: none;
+    }
+
+    #touch-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 0;
+      width: 100%;
+      padding: 0 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      pointer-events: none;
+    }
+
+    .stick-zone, .action-zone {
+      pointer-events: auto;
+      background: rgba(15, 23, 42, 0.75);
+      padding: 12px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      backdrop-filter: blur(4px);
+    }
+
+    .stick-title {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+
+    .row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-ctrl {
+      width: 70px;
+      height: 45px;
+      background: #334155;
+      color: white;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 0.8rem;
+      touch-action: manipulation;
+    }
+
+    .btn-ctrl:active {
+      background: #0284c7;
+    }
+
+    .btn-action {
+      width: 120px;
+      height: 45px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+
+    .btn-danger {
+      background: #dc2626;
+    }
+
+    /* MODAL */
+    .modal {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .modal-content {
+      background: #1e293b;
+      padding: 30px;
+      border-radius: 16px;
+      max-width: 600px;
+      width: 90%;
+      text-align: center;
+    }
+
+    .mission-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .mission-card {
+      background: #334155;
+      padding: 15px;
+      border-radius: 10px;
+      cursor: pointer;
+      text-align: left;
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .mission-card:hover {
+      transform: translateY(-2px);
+      background: #0284c7;
+    }
+
+    /* THEORIE & QUIZ STYLES */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .accordion-item {
+      background: #1e293b;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .accordion-header {
+      padding: 16px;
+      background: #334155;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .accordion-body {
+      padding: 16px;
+      display: none;
+      line-height: 1.6;
+      color: #cbd5e1;
+    }
+
+    .quiz-card {
+      background: #1e293b;
+      padding: 24px;
+      border-radius: 12px;
+      margin-top: 20px;
+      border: 1px solid #334155;
+    }
+
+    .quiz-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .tag {
+      background: #0284c7;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+    }
+
+    .options-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .option-btn {
+      background: #334155;
+      border: 1px solid #475569;
+      color: white;
+      padding: 14px;
+      border-radius: 8px;
+      text-align: left;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .option-btn:hover {
+      background: #475569;
+    }
+
+    .option-btn.correct { background: #16a34a !important; color: white; }
+    .option-btn.wrong { background: #dc2626 !important; color: white; }
+
+    .feedback-box {
+      padding: 14px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-weight: 500;
+    }
+
+    .feedback-box.correct { background: rgba(22, 163, 74, 0.2); border: 1px solid #16a34a; color: #4ade80; }
+    .feedback-box.wrong { background: rgba(220, 38, 38, 0.2); border: 1px solid #dc2626; color: #f87171; }
+
+    .hidden { display: none; }
+
+    .btn-primary {
+      background: #0284c7;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    /* CERTIFICAAT STYLES */
+    .align-center { text-align: center; }
+
+    .certificate-frame {
+      background: #ffffff;
+      color: #0f172a;
+      padding: 40px;
+      border-radius: 12px;
+      border: 10px solid #0284c7;
+      max-width: 700px;
+      margin: 20px auto;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    .cert-border {
+      border: 2px solid #cbd5e1;
+      padding: 30px;
+    }
+
+    .cert-input {
+      font-size: 1.4rem;
+      padding: 8px;
+      width: 80%;
+      text-align: center;
+      margin: 15px 0;
+      border: none;
+      border-bottom: 2px solid #0284c7;
+      outline: none;
+      font-weight: bold;
+    }
+
+    .cert-details {
+      margin: 20px 0;
+      line-height: 1.8;
+    }
+
+    .text-success { color: #16a34a; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <!-- NAVIGATIEBAR -->
+  <nav class="navbar">
+    <div class="logo">🛸 Drone Academy</div>
+    <div class="nav-links">
+      <button onclick="switchTab('sim')" id="nav-sim" class="active">3D Simulator</button>
+      <button onclick="switchTab('theory')" id="nav-theory">Theorie & Lessen</button>
+      <button onclick="switchTab('exam')" id="nav-exam">Oefentoets</button>
+      <button onclick="switchTab('cert')" id="nav-cert">Certificaat</button>
+    </div>
+    <div class="score-badge">Punten: <span id="global-score">0</span></div>
+  </nav>
+
+  <!-- SECTIE 1: 3D SIMULATOR -->
+  <section id="sec-sim" class="tab-content active">
+    <div id="sim-container">
+      <div id="canvas-holder"></div>
+      
+      <!-- HUD / OVERLAY -->
+      <div id="hud">
+        <div class="hud-item">Missie: <b id="current-mission-title">Geen</b></div>
+        <div class="hud-item">Hoogte: <span id="hud-alt">0</span>m</div>
+        <div class="hud-item">Snelheid: <span id="hud-speed">0</span> km/h</div>
+        <div class="hud-item">Foto's: <span id="hud-photos">0</span></div>
+      </div>
+
+      <!-- MISSIE SELECTIE OVERLAY -->
+      <div id="mission-modal" class="modal">
+        <div class="modal-content">
+          <h2>Kies je Vliegmissie</h2>
+          <p>Behaal missies om je score te verhogen en je vliegbrevet te behalen!</p>
+          <div class="mission-list">
+            <div class="mission-card" onclick="startMission(1)">
+              <h3>Level 1: Basisschool & RTH Oefening</h3>
+              <p>Stijg op, maak een draai van 360° en voer een veilige RTH (Return To Home) uit op de stippellijn.</p>
+              <small>Beloning: 100 pt</small>
+            </div>
+            <div class="mission-card" onclick="startMission(2)">
+              <h3>Level 2: De Oude Molen & Brug</h3>
+              <p>Vlieg rondom de draaiende molen, maak een luchtfoto van de wieken en vlieg onder de brug door!</p>
+              <small>Beloning: 200 pt</small>
+            </div>
+            <div class="mission-card" onclick="startMission(3)">
+              <h3>Level 3: Kerktoren & Stadscentrum</h3>
+              <p>Inspecteer de kerktoren met een foto, registreer het winkelplein en vermijd rijdende auto's.</p>
+              <small>Beloning: 300 pt</small>
+            </div>
+            <div class="mission-card" onclick="startMission(4)">
+              <h3>Level 4: Bos, Gebouw-flythrough & Vrijvliegen</h3>
+              <p>Vlieg door het geopende magazijn, maak overzichtsfoto's van het bos en land veilig.</p>
+              <small>Beloning: 400 pt</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ON-SCREEN CONTROLS -->
+      <div id="touch-controls">
+        <div class="stick-zone" id="left-stick">
+          <div class="stick-title">Links: Stijgen/Dalen & Draaien</div>
+          <button class="btn-ctrl" id="btn-up">▲ Stijg</button>
+          <div class="row">
+            <button class="btn-ctrl" id="btn-yaw-left">◄ Draai L</button>
+            <button class="btn-ctrl" id="btn-yaw-right">Draai R ►</button>
+          </div>
+          <button class="btn-ctrl" id="btn-down">▼ Dalen</button>
+        </div>
+
+        <div class="action-zone">
+          <button id="btn-photo" class="btn-action">📷 Foto Maken</button>
+          <button id="btn-rth" class="btn-action btn-danger">🏠 RTH Activeer</button>
+        </div>
+
+        <div class="stick-zone" id="right-stick">
+          <div class="stick-title">Rechts: Voor/Achter/Zijwaarts</div>
+          <button class="btn-ctrl" id="btn-pitch-fwd">▲ Vooruit</button>
+          <div class="row">
+            <button class="btn-ctrl" id="btn-roll-left">◄ Links</button>
+            <button class="btn-ctrl" id="btn-roll-right">Rechts ►</button>
+          </div>
+          <button class="btn-ctrl" id="btn-pitch-back">▼ Achteruit</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTIE 2: THEORIE DOMEINEN -->
+  <section id="sec-theory" class="tab-content">
+    <div class="container">
+      <h1>EASA & RDW Officiele Theorie A1/A3 - A2</h1>
+      <p>Bestudeer alle officiële domeinen om voor te bereiden op de examens.</p>
+      <div id="theory-modules" class="accordion-container"></div>
+    </div>
+  </section>
+
+  <!-- SECTIE 3: OEFENTOETS -->
+  <section id="sec-exam" class="tab-content">
+    <div class="container">
+      <h1>Officiele Oefentoets Dronepiloot</h1>
+      <p>De vragen worden bij elke poging gewisseld. Behaal minimaal 75% om te slagen!</p>
+      
+      <div id="quiz-box" class="quiz-card">
+        <div class="quiz-header">
+          <span id="quiz-progress">Vraag 1 van 10</span>
+          <span id="quiz-domain" class="tag">Domein...</span>
+        </div>
+        <h2 id="quiz-question">Vraag laden...</h2>
+        <div id="quiz-options" class="options-grid"></div>
+        <div id="quiz-feedback" class="feedback-box hidden"></div>
+        <button id="btn-next-q" class="btn-primary hidden" onclick="nextQuestion()">Volgende Vraag ►</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTIE 4: CERTIFICAAT -->
+  <section id="sec-cert" class="tab-content">
+    <div class="container align-center">
+      <div id="certificate" class="certificate-frame">
+        <div class="cert-border">
+          <h2>CERTIFICAAT VAN BEKWAAMHEID</h2>
+          <p class="cert-subtitle">Junior Drone Pilot - A1/A3 Praktijk & Theorie</p>
+          <hr>
+          <p>Hiermee wordt verklaard dat de leerling:</p>
+          <input type="text" id="student-name" placeholder="Vul hier je voor- en achternaam in" class="cert-input">
+          <p>Met succes alle praktijkmissies en theorie-onderdelen heeft afgerond.</p>
+          <div class="cert-details">
+            <p><strong>Totaal Behaalde Punten:</strong> <span id="cert-score">0</span> pt</p>
+            <p><strong>Datum:</strong> <span id="cert-date">--</span></p>
+            <p><strong>Status:</strong> <span id="cert-status" class="text-success">In Afwachting</span></p>
+          </div>
+          <div class="cert-footer">
+            <p>🎓 Symbion Praktijkonderwijs - ICT & Drone Education</p>
+          </div>
+        </div>
+      </div>
+      <button onclick="window.print()" class="btn-primary">🖨️ Certificaat Afdrukken / Opslaan als PDF</button>
+    </div>
+  </section>
+
+  <!-- JAVASCRIPT LOGICA -->
+  <script>
+    // Officiele EASA / RDW Theorie Bibliotheek & Oefenvragen
+    const THEORY_DOMAINS = [
+      {
+        id: "dom1",
+        title: "Domein 1: Luchtvaartveiligheid & Regelgeving (EASA)",
+        content: `
+          <ul>
+            <li><b>A1 Categorie:</b> Vliegen met drones tot 900g (C0/C1). Boven mensen mag beperkt, nooit boven menigten.</li>
+            <li><b>A3 Categorie:</b> Drones tot 25kg (C2/C3/C4). Minimaal 150m afstand van woon-, handels-, industrie- of recreatiegebieden.</li>
+            <li><b>A2 Categorie:</b> Drones tot 4kg (C2). Minimaal 30m afstand van onbetrokken personen (of 5m in lagesnelheidsmodus).</li>
+            <li><b>Maximale Vlieghoogte:</b> Altijd maximaal 120 meter boven de grond.</li>
+            <li><b>No-Fly Zones:</b> Verboden te vliegen rondom luchthavens, militaire gebieden en Laagvlieggebieden.</li>
+          </ul>
+        `
+      },
+      {
+        id: "dom2",
+        title: "Domein 2: Operationele Procedures & Pre-Flight Checks",
+        content: `
+          <ul>
+            <li><b>Pre-Flight Check:</b> Controleer de accu's, propellorschade, GPS-verbinding en RTH-instellingen voor elke vlucht.</li>
+            <li><b>RTH (Return-To-Home):</b> Zorgt dat de drone bij signaalverlies of lage accu automatisch terugvliegt naar de opstijglocatie op een veilige vooraf ingestelde hoogte.</li>
+            <li><b>VLOS (Visual Line of Sight):</b> Je moet de drone altijd met het blote oog kunnen zien zonder hulpmiddelen (behalve bril/lenzen).</li>
+          </ul>
+        `
+      },
+      {
+        id: "dom3",
+        title: "Domein 3: Menselijke Prestaties & Beperkingen",
+        content: `
+          <ul>
+            <li><b>Piloot Conditie:</b> Vlieg nooit onder invloed van alcohol, medicijnen of bij zware vermoeidheid.</li>
+            <li><b>Ruimtelijk Inzicht:</b> Houd rekening met de oriëntatie van de drone (voorkant vs achterkant) om stuurfouten te voorkomen.</li>
+            <li><b>Privacy:</b> Maak geen illegale opnames van mensen op privéterrein zonder hun uitdrukkelijke toestemming (AVG).</li>
+          </ul>
+        `
+      },
+      {
+        id: "dom4",
+        title: "Domein 4: Meteorologie & Luchtvaartkennis",
+        content: `
+          <ul>
+            <li><b>Wind en Turbulentie:</b> Windvlagen rondom hoge gebouwen en bomen kunnen de drone instabiel maken. Check altijd de windkracht (max. Bft 4 à 5 voor kleine drones).</li>
+            <li><b>Temperatuur:</b> Koude temperaturen (onder 5°C) zorgen voor een snelle ontlading van LiPo-accu's.</li>
+            <li><b>KP-Index (Zonneactiviteit):</b> Een hoge KP-index kan GPS-signalen en het kompas verstoren.</li>
+          </ul>
+        `
+      }
+    ];
+
+    const QUESTION_BANK = [
+      {
+        domain: "Domein 1: Regelgeving",
+        question: "Wat is de maximale toegestane vlieghoogte voor een drone in de Open Categorie (A1/A2/A3)?",
+        options: [
+          { text: "120 meter boven het aardoppervlak", correct: true },
+          { text: "150 meter boven het zeeniveau", correct: false },
+          { text: "200 meter boven het opstijgpunt", correct: false },
+          { text: "Onbeperkt mits goed zichtbaar", correct: false }
+        ],
+        explanation: "Volgens de EASA-regelgeving mag een drone in de Open Categorie nooit hoger vliegen dan 120 meter boven het aardoppervlak."
+      },
+      {
+        domain: "Domein 1: Regelgeving",
+        question: "Wat houdt de A3 subcategorie in qua afstand tot bebouwing?",
+        options: [
+          { text: "Minimaal 150 meter afstand van woon-, industrie- of recreatiegebieden", correct: true },
+          { text: "Minimaal 50 meter afstand van alle individuele gebouwen", correct: false },
+          { text: "Geen afstandseis mits er geen mensen lopen", correct: false },
+          { text: "Minimaal 300 meter afstand van snelwegen en spoorlijnen", correct: false }
+        ],
+        explanation: "In categorie A3 geldt een strikte afstandseis van minimaal 150 meter van woon-, handels-, industrie- of recreatiegebieden."
+      },
+      {
+        domain: "Domein 2: Procedures",
+        question: "Wat doet de Return-To-Home (RTH) functie bij een drone?",
+        options: [
+          { text: "Laat de drone stijgen naar een veilige hoogte en gecontroleerd terugvliegen naar de opstijglocatie", correct: true },
+          { text: "Schakelt de motoren direct uit om een noodlanding op de huidige plek te maken", correct: false },
+          { text: "Vliegt automatisch naar het dichtstbijzijnde vliegveld voor een noodlanding", correct: false },
+          { text: "Zet de camera in een rechte lijn naar beneden gericht voor landingsinspectie", correct: false }
+        ],
+        explanation: "RTH brengt de drone automatisch en gecontroleerd terug naar het opgeslagen Home-point bij signaalverlies of lege accu."
+      },
+      {
+        domain: "Domein 2: Procedures",
+        question: "Wat betekent de term VLOS (Visual Line of Sight)?",
+        options: [
+          { text: "De drone altijd direct met het blote oog kunnen waarnemen", correct: true },
+          { text: "De drone vliegen via het live videobeeld op je scherm of FPV-bril", correct: false },
+          { text: "Het zicht dat de camera op de drone heeft op het landschap", correct: false },
+          { text: "De afstand die de radar van de drone kan scannen", correct: false }
+        ],
+        explanation: "VLOS houdt in dat de bestuurder de drone gedurende de gehele vlucht zonder hulpmiddelen (behalve gewone bril/lenzen) moet kunnen zien."
+      },
+      {
+        domain: "Domein 4: Meteorologie",
+        question: "Welke invloed heeft een lage buitentemperatuur (onder 5°C) op LiPo-accu's?",
+        options: [
+          { text: "De spanning kan plotseling dalen, waardoor de vliegtijd flink korter wordt", correct: true },
+          { text: "De accu laadt sneller op gedurende de vlucht door interne koeling", correct: false },
+          { text: "Er is geen enkele invloed op de prestaties van de accu", correct: false },
+          { text: "De drone kan hierdoor 20 procent sneller vliegen", correct: false }
+        ],
+        explanation: "Kou vermindert de chemische reactie in LiPo-accu's, wat kan leiden tot een plotselinge spanningsval en verkorte vliegtijd."
+      }
+    ];
+
+    // GLOBAL STATE
+    let globalScore = 0;
+    let currentMission = 0;
+    let photosTaken = 0;
+
+    let scene, camera, renderer;
+    let drone, droneArrow;
+    let windmillBlades;
+    let vehicles = [];
+
+    let dronePos = { x: 0, y: 1, z: 0 };
+    let droneRot = 0;
+    let isRTHActive = false;
+    let keys = {};
+
+    window.onload = function() {
+      initTheoryUI();
+      initExam();
+      init3DSimulator();
+      updateScoreUI();
+    };
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav-links button').forEach(el => el.classList.remove('active'));
+      
+      document.getElementById('sec-' + tabId).classList.add('active');
+      document.getElementById('nav-' + tabId).classList.add('active');
+
+      if (tabId === 'cert') {
+        document.getElementById('cert-score').innerText = globalScore;
+        document.getElementById('cert-date').innerText = new Date().toLocaleDateString('nl-NL');
+        if (globalScore >= 500) {
+          document.getElementById('cert-status').innerText = "GESLAAGD (Gecertificeerd)";
+        }
+      }
+    }
+
+    function addPoints(pts) {
+      globalScore += pts;
+      updateScoreUI();
+    }
+
+    function updateScoreUI() {
+      document.getElementById('global-score').innerText = globalScore;
+    }
+
+    /* 3D SIMULATOR */
+    function init3DSimulator() {
+      const container = document.getElementById('canvas-holder');
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x87ceeb);
+      scene.fog = new THREE.FogExp2(0x87ceeb, 0.005);
+
+      camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+      
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.shadowMap.enabled = true;
+      container.appendChild(renderer.domElement);
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      dirLight.position.set(50, 100, 50);
+      scene.add(dirLight);
+
+      buildEnvironment();
+      buildDrone();
+      setupControls();
+      animate();
+    }
+
+    function buildEnvironment() {
+      const ground = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.MeshLambertMaterial({ color: 0x2e7d32 }));
+      ground.rotation.x = -Math.PI / 2;
+      scene.add(ground);
+
+      const pad = new THREE.Mesh(new THREE.CircleGeometry(4, 32), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+      pad.rotation.x = -Math.PI / 2;
+      pad.position.set(0, 0.05, 0);
+      scene.add(pad);
+
+      const road = new THREE.Mesh(new THREE.PlaneGeometry(20, 300), new THREE.MeshLambertMaterial({ color: 0x334155 }));
+      road.rotation.x = -Math.PI / 2;
+      road.position.x = 40;
+      scene.add(road);
+
+      // Molen
+      const millTower = new THREE.Mesh(new THREE.CylinderGeometry(3, 5, 20, 16), new THREE.MeshLambertMaterial({ color: 0x78350f }));
+      millTower.position.set(-30, 10, -40);
+      scene.add(millTower);
+
+      windmillBlades = new THREE.Group();
+      for(let i=0; i<4; i++) {
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(1, 12, 0.2), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+        blade.position.y = 6;
+        blade.rotation.z = (Math.PI / 2) * i;
+        windmillBlades.add(blade);
+      }
+      windmillBlades.position.set(-30, 18, -37.5);
+      scene.add(windmillBlades);
+
+      // Kerk
+      const churchBody = new THREE.Mesh(new THREE.BoxGeometry(15, 12, 25), new THREE.MeshLambertMaterial({ color: 0x64748b }));
+      churchBody.position.set(0, 6, -60);
+      scene.add(churchBody);
+
+      const churchTower = new THREE.Mesh(new THREE.ConeGeometry(5, 15, 4), new THREE.MeshLambertMaterial({ color: 0x991b1b }));
+      churchTower.position.set(0, 19, -50);
+      scene.add(churchTower);
+
+      // Brug
+      const river = new THREE.Mesh(new THREE.PlaneGeometry(300, 30), new THREE.MeshLambertMaterial({ color: 0x0284c7 }));
+      river.rotation.x = -Math.PI / 2;
+      river.position.set(0, 0.02, 50);
+      scene.add(river);
+
+      const bridge = new THREE.Mesh(new THREE.BoxGeometry(30, 2, 10), new THREE.MeshLambertMaterial({ color: 0x475569 }));
+      bridge.position.set(40, 2, 50);
+      scene.add(bridge);
+
+      // Auto's
+      for(let i=0; i<3; i++) {
+        const car = new THREE.Mesh(new THREE.BoxGeometry(3, 2, 5), new THREE.MeshLambertMaterial({ color: 0xdc2626 }));
+        car.position.set(40, 1, -100 + i*80);
+        scene.add(car);
+        vehicles.push(car);
+      }
+    }
+
+    function buildDrone() {
+      drone = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.3, 1.2), new THREE.MeshLambertMaterial({ color: 0x0284c7 }));
+      drone.add(body);
+
+      const arrowGeo = new THREE.ConeGeometry(0.4, 1, 3);
+      droneArrow = new THREE.Mesh(arrowGeo, new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+      droneArrow.rotation.x = Math.PI / 2;
+      droneArrow.position.set(0, 0.3, -1);
+      drone.add(droneArrow);
+
+      drone.position.set(dronePos.x, dronePos.y, dronePos.z);
+      scene.add(drone);
+    }
+
+    function setupControls() {
+      window.addEventListener('keydown', e => keys[e.key] = true);
+      window.addEventListener('keyup', e => keys[e.key] = false);
+
+      const bindBtn = (id, keyName) => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.addEventListener('mousedown', () => keys[keyName] = true);
+        btn.addEventListener('mouseup', () => keys[keyName] = false);
+        btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; });
+        btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; });
+      };
+
+      bindBtn('btn-up', 'ArrowUp');
+      bindBtn('btn-down', 'ArrowDown');
+      bindBtn('btn-yaw-left', 'a');
+      bindBtn('btn-yaw-right', 'd');
+      bindBtn('btn-pitch-fwd', 'w');
+      bindBtn('btn-pitch-back', 's');
+      bindBtn('btn-roll-left', 'q');
+      bindBtn('btn-roll-right', 'e');
+
+      document.getElementById('btn-photo').onclick = takePhoto;
+      document.getElementById('btn-rth').onclick = triggerRTH;
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (windmillBlades) windmillBlades.rotation.z += 0.02;
+
+      vehicles.forEach(car => {
+        car.position.z += 0.3;
+        if(car.position.z > 150) car.position.z = -150;
+      });
+
+      if (isRTHActive) {
+        handleRTHLogic();
+      } else {
+        if (keys['ArrowUp']) dronePos.y += 0.15;
+        if (keys['ArrowDown'] && dronePos.y > 0.3) dronePos.y -= 0.15;
+
+        if (keys['a']) droneRot += 0.03;
+        if (keys['d']) droneRot -= 0.03;
+
+        let moveForward = 0;
+        let moveSide = 0;
+
+        if (keys['w']) moveForward = -0.25;
+        if (keys['s']) moveForward = 0.25;
+        if (keys['q']) moveSide = -0.2;
+        if (keys['e']) moveSide = 0.2;
+
+        dronePos.x += Math.sin(droneRot) * moveForward + Math.cos(droneRot) * moveSide;
+        dronePos.z += Math.cos(droneRot) * moveForward - Math.sin(droneRot) * moveSide;
+      }
+
+      drone.position.set(dronePos.x, dronePos.y, dronePos.z);
+      drone.rotation.y = droneRot;
+
+      camera.position.x = dronePos.x + Math.sin(droneRot) * 8;
+      camera.position.z = dronePos.z + Math.cos(droneRot) * 8;
+      camera.position.y = dronePos.y + 4;
+      camera.lookAt(dronePos.x, dronePos.y, dronePos.z);
+
+      document.getElementById('hud-alt').innerText = Math.round(dronePos.y);
+      document.getElementById('hud-speed').innerText = (keys['w'] || keys['s']) ? '18' : '0';
+
+      renderer.render(scene, camera);
+    }
+
+    function triggerRTH() {
+      isRTHActive = true;
+      alert("🏠 Return to Home geactiveerd!");
+    }
+
+    function handleRTHLogic() {
+      if (dronePos.y < 15) {
+        dronePos.y += 0.1;
+        return;
+      }
+      const dist = Math.sqrt(dronePos.x * dronePos.x + dronePos.z * dronePos.z);
+      if (dist > 0.5) {
+        dronePos.x *= 0.95;
+        dronePos.z *= 0.95;
+      } else {
+        if (dronePos.y > 0.3) {
+          dronePos.y -= 0.08;
+        } else {
+          isRTHActive = false;
+          alert("✅ RTH Succesvol afgerond!");
+          if (currentMission === 1) completeMission(100);
+        }
+      }
+    }
+
+    function takePhoto() {
+      photosTaken++;
+      document.getElementById('hud-photos').innerText = photosTaken;
+      if (currentMission === 2 && Math.abs(dronePos.x - (-30)) < 15) {
+        alert("📸 Prachtige luchtfoto van de molen gemaakt!");
+        completeMission(200);
+      } else if (currentMission === 3 && Math.abs(dronePos.z - (-60)) < 20) {
+        alert("📸 Perfecte inspectiefoto van de kerktoren!");
+        completeMission(300);
+      } else {
+        alert("📸 Foto gemaakt!");
+      }
+    }
+
+    function startMission(lvl) {
+      currentMission = lvl;
+      document.getElementById('mission-modal').classList.add('hidden');
+      document.getElementById('current-mission-title').innerText = "Level " + lvl;
+    }
+
+    function completeMission(pts) {
+      addPoints(pts);
+      alert(`🎉 Missie voltooid! +${pts} punten.`);
+      document.getElementById('mission-modal').classList.remove('hidden');
+    }
+
+    /* THEORIE & QUIZ */
+    function initTheoryUI() {
+      const container = document.getElementById('theory-modules');
+      container.innerHTML = THEORY_DOMAINS.map(dom => `
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion('${dom.id}')">${dom.title}</div>
+          <div id="${dom.id}" class="accordion-body">${dom.content}</div>
+        </div>
+      `).join('');
+    }
+
+    function toggleAccordion(id) {
+      const body = document.getElementById(id);
+      body.style.display = (body.style.display === 'block') ? 'none' : 'block';
+    }
+
+    let currentQIndex = 0;
+    let shuffledQuestions = [];
+
+    function initExam() {
+      shuffledQuestions = [...QUESTION_BANK].sort(() => Math.random() - 0.5);
+      currentQIndex = 0;
+      showQuestion();
+    }
+
+    function showQuestion() {
+      const q = shuffledQuestions[currentQIndex];
+      document.getElementById('quiz-progress').innerText = `Vraag ${currentQIndex + 1} van ${shuffledQuestions.length}`;
+      document.getElementById('quiz-domain').innerText = q.domain;
+      document.getElementById('quiz-question').innerText = q.question;
+
+      const optionsContainer = document.getElementById('quiz-options');
+      optionsContainer.innerHTML = '';
+
+      const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
+      shuffledOptions.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.innerText = opt.text;
+        btn.onclick = () => checkAnswer(opt, q);
+        optionsContainer.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').className = 'feedback-box hidden';
+      document.getElementById('btn-next-q').classList.add('hidden');
+    }
+
+    function checkAnswer(selectedOpt, question) {
+      const feedbackBox = document.getElementById('quiz-feedback');
+      feedbackBox.classList.remove('hidden');
+
+      if (selectedOpt.correct) {
+        feedbackBox.className = 'feedback-box correct';
+        feedbackBox.innerHTML = `<b>Uitstekend gedaan!</b><br>${question.explanation}`;
+        addPoints(50);
+      } else {
+        feedbackBox.className = 'feedback-box wrong';
+        feedbackBox.innerHTML = `<b>Helaas, dat is niet juist.</b><br>${question.explanation}`;
+      }
+      document.getElementById('btn-next-q').classList.remove('hidden');
+    }
+
+    function nextQuestion() {
+      currentQIndex++;
+      if (currentQIndex < shuffledQuestions.length) {
+        showQuestion();
+      } else {
+        alert("🏆 Je hebt de oefentoets afgerond!");
+        switchTab('cert');
+      }
+    }
+  </script>
+</body>
+</html>
